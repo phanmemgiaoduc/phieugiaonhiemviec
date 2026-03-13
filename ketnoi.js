@@ -1,95 +1,92 @@
 /* ==========================================================================
-   Tệp: ketnoi.js (hoặc PGV_KetNoi.html)
-   Mục đích: Cầu nối giao tiếp (API Client) gọi các hàm từ Server 
+   Tệp: ketnoi.js
+   Mục đích: Cầu nối giao tiếp (API Client) gọi các hàm từ Server bằng Fetch
    Hệ thống: Quản lý Nhiệm vụ - TH Hợp Thành
    ========================================================================== */
 
+// 1. ĐIỀN LINK WEB APP (API) CỦA THẦY VÀO ĐÂY:
+const API_URL = "https://script.google.com/macros/s/AKfycbwQ567FJtCJatWOakyv5D8VRkOK2TXsQCgouYsAmQG5kU8KiJlsdSebP4j7Ks5RI5n1/exec"; 
+
 const ServerAPI = {
+    // Hàm lõi xử lý gửi request (Dùng chung cho tất cả)
+    _request: function(action, payload, onSuccess, onError) {
+        const data = { action: action, ...payload };
+        
+        fetch(API_URL, {
+            method: 'POST',
+            // Dùng text/plain để tránh lỗi CORS chặn chéo tên miền của trình duyệt
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(res => {
+            if (res.status === 'error') {
+                if (onError) onError(new Error(res.message));
+            } else {
+                // Lấy dữ liệu từ res.data nếu có, ngược lại lấy toàn bộ object res
+                let finalData = (res.data !== undefined) ? res.data : res;
+                if (onSuccess) onSuccess(finalData);
+            }
+        })
+        .catch(err => {
+            console.error("Lỗi API (" + action + "):", err);
+            if (onError) onError(err);
+        });
+    },
 
     /* ==========================================================================
        PHẦN 1: CÁC HÀM LIÊN KẾT VỚI "PGV_Code.gs" (CORE & USER REPORT)
        ========================================================================== */
 
-    // 1. Lấy dữ liệu cá nhân của người dùng
-    getUserData: function(requestSheetName, onSuccess, onError) {
-        google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .PGV_getUserData(requestSheetName);
+    // 1. Lấy dữ liệu cá nhân của người dùng (Đã bổ sung clientEmail)
+    getUserData: function(requestSheetName, clientEmail, onSuccess, onError) {
+        this._request("getUserData", { requestSheetName: requestSheetName, clientEmail: clientEmail }, onSuccess, onError);
     },
 
     // 2. Lưu tạm dữ liệu báo cáo
     saveTempData: function(formData, onSuccess, onError) {
-        google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .PGV_saveTempData(formData);
+        this._request("saveTempData", { formData: formData }, onSuccess, onError);
     },
 
-    // 3. Nộp báo cáo chính thức (Ghi nhật ký & Cập nhật DATAGV)
+    // 3. Nộp báo cáo chính thức
     submitReport: function(data, onSuccess, onError) {
-        google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .PGV_submitReport(data);
+        this._request("submitReport", { formData: data }, onSuccess, onError);
     },
 
     // 4. Lấy dữ liệu tổng hợp kết quả
     getSummaryData: function(onSuccess, onError) {
-        google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .PGV_getSummaryData();
+        this._request("getSummaryData", {}, onSuccess, onError);
     },
 
     // 5. Lấy dữ liệu tổng hợp ngày nghỉ
     getLeaveSummaryData: function(onSuccess, onError) {
-        google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .PGV_getLeaveSummaryData();
+        this._request("getLeaveSummaryData", {}, onSuccess, onError);
     },
 
     // 6. Lấy dữ liệu tổng hợp ý kiến
     getOpinionSummaryData: function(onSuccess, onError) {
-        google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .PGV_getOpinionSummaryData();
+        this._request("getOpinionSummaryData", {}, onSuccess, onError);
     },
 
     // 7. Lấy dữ liệu tổng hợp báo cáo tóm tắt
     getReportData: function(onSuccess, onError) {
-        google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .PGV_getReportData();
+        this._request("getReportData", {}, onSuccess, onError);
     },
 
     // 8. Lấy danh sách Sheet (Nhân sự khai báo)
     getListSheets: function(onSuccess, onError) {
-        google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .PGV_getListSheets();
+        this._request("getListSheets", {}, onSuccess, onError);
     },
 
-    // 9. Kiểm tra quyền Giáo viên
-    checkTeacherPermission: function(onSuccess, onError) {
-        google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .PGV_checkTeacherPermission();
+    // 9. Kiểm tra quyền Giáo viên (Đã bổ sung clientEmail)
+    checkTeacherPermission: function(clientEmail, onSuccess, onError) {
+        this._request("checkTeacherPermission", { clientEmail: clientEmail }, onSuccess, onError);
     },
 
-    // 10. Kiểm tra quyền truy cập Tab Giao Việc
-    checkGiaoViecTabPermission: function(onSuccess, onError) {
-        google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .PGV_checkGiaoViecTabPermission();
+    // 10. Kiểm tra quyền truy cập Tab Giao Việc (Đã bổ sung clientEmail)
+    checkGiaoViecTabPermission: function(clientEmail, onSuccess, onError) {
+        this._request("checkGiaoViecTabPermission", { clientEmail: clientEmail }, onSuccess, onError);
     },
-
 
     /* ==========================================================================
        PHẦN 2: CÁC HÀM LIÊN KẾT VỚI "PGV_Code_GiaoViec.gs" (MÔ ĐUN GIAO VIỆC)
@@ -97,25 +94,16 @@ const ServerAPI = {
 
     // 11. Lấy danh sách nhân sự để giao việc
     getStaffList: function(onSuccess, onError) {
-        google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .PGV_GV_getStaffList();
+        this._request("getStaffList", {}, onSuccess, onError);
     },
 
     // 12. Xử lý logic Giao việc & Xóa (Reset tháng)
     processTaskAssignment: function(payload, onSuccess, onError) {
-        google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .PGV_GV_processTaskAssignment(payload);
+        this._request("processTaskAssignment", { payload: payload }, onSuccess, onError);
     },
 
     // 13. Tải dữ liệu giao việc ban đầu
     getInitialGiaoViecData: function(onSuccess, onError) {
-        google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .PGV_GV_getInitialData();
+        this._request("getInitialGiaoViecData", {}, onSuccess, onError);
     }
 };
