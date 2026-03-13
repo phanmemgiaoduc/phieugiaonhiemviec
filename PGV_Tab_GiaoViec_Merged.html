@@ -36,7 +36,7 @@
   #gv_container td.action-cell { text-align: center; padding: 2px !important; background-color: #f8f9fa; }
   #gv_container .btn-add { margin-top: 5px; font-size: 13px; font-weight: bold; }
   
-  /* --- 5. LOADING SCREEN (ĐÃ NÂNG CẤP ĐẸP MẮT) --- */
+  /* --- 5. LOADING SCREEN --- */
   #gv_loading { 
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
       background: rgba(255,255,255,0.95); display: none; 
@@ -51,7 +51,6 @@
       text-align: center; 
       letter-spacing: 1.5px; 
       text-transform: uppercase; 
-      /* Hiệu ứng Gradient chữ chuyên nghiệp */
       background: linear-gradient(45deg, #0d6efd, #6610f2, #dc3545, #0d6efd);
       background-size: 300% 300%;
       -webkit-background-clip: text;
@@ -61,7 +60,6 @@
       font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
 
-  /* Keyframe cho hiệu ứng màu chạy và nhịp thở của chữ */
   @keyframes gradientMove {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
@@ -219,7 +217,6 @@
       modal.show();
   }
 
-  // --- HÀM LOADING ĐÃ ĐƯỢC NÂNG CẤP HIỂU THỊ ĐẸP MẮT ---
   function gv_setLoading(isLoading, customMsg = null) {
       const loader = document.getElementById('gv_loading');
       const msgEl = document.getElementById('gv_loading_msg');
@@ -228,7 +225,6 @@
       if (isLoading) {
           msgEl.innerText = customMsg || "Đang xử lý...";
           
-          // Kiểm tra nếu là đang tải nhiệm vụ chung hoặc reset dữ liệu thì dùng màu nổi bật hơn
           if (customMsg && (customMsg.toLowerCase().includes("nhiệm vụ chung") || customMsg.toLowerCase().includes("dọn") || customMsg.toLowerCase().includes("chuyển"))) {
               msgEl.style.backgroundImage = "linear-gradient(45deg, #dc3545, #fd7e14, #ffc107, #dc3545)";
               spinner.className = "spinner-border text-danger spinner-border-lg"; 
@@ -242,17 +238,25 @@
       }
   }
 
+  /* --- CẬP NHẬT: SỬ DỤNG SERVER API ĐỂ TẢI NHÂN SỰ --- */
   function gv_loadStaff() {
-    gv_setLoading(true, "Đang tải danh sách nhân sự...");
-    google.script.run.withSuccessHandler(function(data) {
+    gv_setLoading(true, "Đang tải danh sách nhân sự (để giao việc)...");
+    ServerAPI.getStaffList(function(data) {
       gv_staffData = data;
       gv_loadInitialData(); 
-    }).PGV_GV_getStaffList();
+    }, function(err) {
+      gv_showNotify('error', "Lỗi tải nhân sự: " + err.message);
+      gv_setLoading(false);
+    });
   }
 
+  /* --- CẬP NHẬT: SỬ DỤNG SERVER API --- */
   function gv_loadInitialData() {
     gv_setLoading(true, "✨ Đang cập nhật nhiệm vụ mới ✨");
-    google.script.run.withSuccessHandler(gv_onSuccessLoad).PGV_GV_getInitialData();
+    ServerAPI.getInitialGiaoViecData(gv_onSuccessLoad, function(err) {
+      gv_showNotify('error', "Lỗi tải dữ liệu: " + err.message);
+      gv_setLoading(false);
+    });
   }
 
   function gv_onSuccessLoad(data) {
@@ -421,11 +425,11 @@
       gv_pendingSelectElement = null;
   }
 
+  /* --- CẬP NHẬT: SỬ DỤNG SERVER API --- */
   function gv_executeServerCall(year, month, taskPayload, selectElement, type) {
-    google.script.run
-      .withSuccessHandler(function(res) {
+    ServerAPI.processTaskAssignment({ year: year, month: month, task: taskPayload }, function(res) {
         gv_setLoading(false);
-        if (res.status === 'success') {
+        if (res && res.status === 'success') {
           selectElement.style.backgroundColor = '#d1e7dd'; 
           selectElement.style.borderColor = '#badbcc';
           selectElement.style.fontWeight = 'bold';
@@ -436,14 +440,12 @@
               setTimeout(gv_loadInitialData, 1000); 
           }
         } else {
-          gv_showNotify('error', "Lỗi Server: " + res.message);
+          gv_showNotify('error', "Lỗi Server: " + (res ? res.message : "Unkown error"));
           selectElement.value = "";
         }
-      })
-      .withFailureHandler(function(err) {
+    }, function(err) {
         gv_setLoading(false);
-        gv_showNotify('error', "Lỗi kết nối: " + err);
-      })
-      .PGV_GV_processTaskAssignment({ year: year, month: month, task: taskPayload });
+        gv_showNotify('error', "Lỗi kết nối: " + err.message);
+    });
   }
 </script>
