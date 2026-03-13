@@ -571,17 +571,24 @@ function parseDateVN(str) {
 }
 
 function formatDateDisplay(dateStr) {
-    if(!dateStr) return "";
-    if (dateStr instanceof Date) {
-        let d = dateStr.getDate();
-        let m = dateStr.getMonth() + 1;
-        let y = dateStr.getFullYear();
-        return (d<10?'0'+d:d) + '/' + (m<10?'0'+m:m) + '/' + y;
-    }
-    if(typeof dateStr === 'string' && dateStr.includes('-') && dateStr.length >= 10 && dateStr.indexOf('-') === 4) {
+    if (!dateStr) return "";
+    
+    // 1. Xử lý chuỗi định dạng yyyy-mm-dd (nếu có)
+    if (typeof dateStr === 'string' && dateStr.includes('-') && dateStr.length >= 10 && dateStr.indexOf('-') === 4) {
          let parts = dateStr.substring(0, 10).split('-');
          return parts[2] + '/' + parts[1] + '/' + parts[0];
     }
+    
+    // 2. Xử lý chuỗi dài "Sat Mar 14 2026..." tự động ép về dd/mm/yyyy
+    let d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+        let day = d.getDate();
+        let month = d.getMonth() + 1;
+        let year = d.getFullYear();
+        return (day < 10 ? '0' + day : day) + '/' + (month < 10 ? '0' + month : month) + '/' + year;
+    }
+    
+    // 3. Trả về nguyên gốc nếu nó đã là text thường
     return dateStr;
 }
 
@@ -589,3 +596,4 @@ function liveUpdateScore() {
     tinhToanTuDong();
 }
 </script>
+
