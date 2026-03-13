@@ -330,6 +330,7 @@ function renderTaskTable(data) {
 function autoResizeInfo(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
 
 /* --- CẬP NHẬT: SỬ DỤNG SERVER API --- */
+/* --- CẬP NHẬT: SỬ DỤNG SERVER API (BỔ SUNG TRUYỀN EMAIL NỘP BÁO CÁO) --- */
 function submitReport() {
     if (typeof isReportUnlocked !== 'undefined' && !isReportUnlocked) {
        showPopup('warning', "Vui lòng bấm 'Lưu tạm' trước khi nộp!");
@@ -389,6 +390,7 @@ function submitReport() {
         ServerAPI.getUserData(currentUser.user.sheetName, window.PGV_GLOBAL_EMAIL, function(resLoad) {
           onDataLoaded(resLoad); 
 
+          // ĐÓNG GÓI DỮ LIỆU CUỐI CÙNG ĐỂ NỘP
           const finalDataToSubmit = {
             sheetName: resLoad.user.sheetName,
             name: resLoad.header.name,
@@ -399,7 +401,10 @@ function submitReport() {
             bonusPoint: $('#inpBonus').val(),
             petition: resLoad.header.savedPetition,
             report: resLoad.header.savedReport,
-            reason: resLoad.header.savedReason
+            reason: resLoad.header.savedReason,
+            
+            // --- ĐÂY LÀ DÒNG BỔ SUNG ĐỂ SERVER NHẬN DIỆN EMAIL ---
+            clientEmail: window.PGV_GLOBAL_EMAIL 
           };
 
           setLoading(true, "🚀 Bước 3: Thực hiện nộp báo cáo " + finalDataToSubmit.time);
@@ -605,5 +610,6 @@ function liveUpdateScore() {
     tinhToanTuDong();
 }
 </script>
+
 
 
