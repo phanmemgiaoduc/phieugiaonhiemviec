@@ -572,23 +572,32 @@ function parseDateVN(str) {
 
 function formatDateDisplay(dateStr) {
     if (!dateStr) return "";
-    
-    // 1. Xử lý chuỗi định dạng yyyy-mm-dd (nếu có)
-    if (typeof dateStr === 'string' && dateStr.includes('-') && dateStr.length >= 10 && dateStr.indexOf('-') === 4) {
-         let parts = dateStr.substring(0, 10).split('-');
-         return parts[2] + '/' + parts[1] + '/' + parts[0];
+    let str = String(dateStr).trim();
+
+    // 1. Nếu chuỗi đã đúng định dạng dd/mm/yyyy thì giữ nguyên
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
+        return str;
     }
+
+    // 2. Xử lý chuỗi định dạng năm-tháng-ngày (yyyy-mm-dd)
+    if (str.length >= 10 && str.charAt(4) === '-') {
+         let parts = str.substring(0, 10).split('-');
+         if(parts.length === 3) return parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+
+    // 3. MẸO TRỊ LỖI: Xóa bỏ cụm từ "(Giờ Đông Dương)" gây lú cho trình duyệt
+    let cleanStr = str.replace(/\(.*?\)/g, '').trim();
     
-    // 2. Xử lý chuỗi dài "Sat Mar 14 2026..." tự động ép về dd/mm/yyyy
-    let d = new Date(dateStr);
+    // 4. Chuyển đổi và ép về chuẩn dd/mm/yyyy
+    let d = new Date(cleanStr);
     if (!isNaN(d.getTime())) {
         let day = d.getDate();
         let month = d.getMonth() + 1;
         let year = d.getFullYear();
         return (day < 10 ? '0' + day : day) + '/' + (month < 10 ? '0' + month : month) + '/' + year;
     }
-    
-    // 3. Trả về nguyên gốc nếu nó đã là text thường
+
+    // Nếu văn bản thường (không phải ngày) thì trả về nguyên vẹn
     return dateStr;
 }
 
@@ -596,4 +605,5 @@ function liveUpdateScore() {
     tinhToanTuDong();
 }
 </script>
+
 
