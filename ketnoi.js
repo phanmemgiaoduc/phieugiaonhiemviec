@@ -5,7 +5,7 @@
    ========================================================================== */
 
 // 1. ĐIỀN LINK WEB APP (API) CỦA THẦY VÀO ĐÂY:
-const API_URL = "https://script.google.com/macros/s/AKfycbwQ567FJtCJatWOakyv5D8VRkOK2TXsQCgouYsAmQG5kU8KiJlsdSebP4j7Ks5RI5n1/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbwx-SfK2k6Sgf2oLQCu1Jt55clwz0nuke8YUVv8QgttrmqxgcDti7c8WA8x8jzh5CHy/exec"; 
 
 const ServerAPI = {
     // Hàm lõi xử lý gửi request (Dùng chung cho tất cả)
@@ -107,3 +107,4 @@ const ServerAPI = {
         this._request("getInitialGiaoViecData", {}, onSuccess, onError);
     }
 };
+
