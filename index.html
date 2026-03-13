@@ -95,16 +95,16 @@
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     @keyframes gradientMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-    /* --- 3. BADGE THÔNG TIN --- */
+    /* --- 3. BADGE THÔNG TIN (ĐÃ DỜI XUỐNG GÓC DƯỚI BÊN PHẢI) --- */
     .dev-badge-container {
-      position: fixed; top: 2px; right: 8px; z-index: 99999;
+      position: fixed; bottom: 20px; right: 20px; top: auto; z-index: 99999;
       display: flex; align-items: center; gap: 10px; padding: 6px 16px;
       background: linear-gradient(135deg, #0d6efd 0%, #0dcaf0 100%);
       border-radius: 50px;
       box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
       color: white; cursor: default; user-select: none;
     }
-    .dev-badge-container:hover { transform: translateY(2px) scale(1.02); box-shadow: 0 8px 25px rgba(13, 110, 253, 0.5); }
+    .dev-badge-container:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 8px 25px rgba(13, 110, 253, 0.5); }
     .dev-text-col { display: flex; flex-direction: column; line-height: 1.1; text-align: left; }
     .dev-name { font-weight: 800; font-size: 13px; color: #ffeb3b; text-transform: uppercase; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }
     .dev-role { font-weight: 500; font-size: 10px; color: #ffffff; opacity: 0.95; margin-top: 2px; }
@@ -161,9 +161,12 @@
            data-callback="handleCredentialResponse"
            data-auto_prompt="false">
       </div>
-      <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="center"></div>
+
+      <div class="d-flex justify-content-start w-100 mt-2">
+         <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="sign_in_with" data-shape="rectangular" data-logo_alignment="left"></div>
+      </div>
       
-      <div style="margin-top: 30px; font-size: 12px; color: #999; font-weight: bold;">Nhà phát triển: HOÀNG NGỌC LÂM</div>
+      <div style="margin-top: 30px; font-size: 12px; color: #999; font-weight: bold; text-align: left;">Nhà phát triển: HOÀNG NGỌC LÂM</div>
     </div>
   </div>
 
@@ -330,7 +333,6 @@
       loadInitialData();
       loadSheetList();
 
-      /* CHUYỂN ĐỔI SANG DÙNG ServerAPI */
       ServerAPI.checkGiaoViecTabPermission(window.PGV_GLOBAL_EMAIL, function(isAllowed) {
         if (isAllowed) $('#li-giaoviec').show();
         else $('#li-giaoviec').hide();
@@ -402,7 +404,6 @@
         });
     }
 
-    /* CHUYỂN ĐỔI SANG DÙNG ServerAPI */
     function loadInitialData() {
       ServerAPI.getUserData(null, window.PGV_GLOBAL_EMAIL, onDataLoaded, onServerFail);
     }
@@ -463,7 +464,6 @@
       }
     }
 
-    /* CHUYỂN ĐỔI SANG DÙNG ServerAPI */
     function saveTemp() {
       try {
         if (!currentUser || !currentUser.user || !currentUser.user.sheetName) {
@@ -493,6 +493,7 @@
         ServerAPI.saveTempData(payload, function(res) {
           hideLoading();
           if(typeof unlockSubmitButton === 'function') unlockSubmitButton();
+
           if (res && res.status === 'success') {
             showPopup('success', "Đã ghi nhớ kết quả thành công!");
           } else {
@@ -509,7 +510,6 @@
       }
     }
 
-    /* CHUYỂN ĐỔI SANG DÙNG ServerAPI */
     function submitReport() {
       if (typeof isReportUnlocked !== 'undefined' && !isReportUnlocked) {
          showPopup('warning', "Vui lòng bấm 'Lưu tạm' trước khi nộp!");
@@ -594,6 +594,7 @@
                 showPopup('success', msgFinal);
                 
                 if(typeof forceLockSubmitButton === 'function') forceLockSubmitButton();
+
               } else {
                 showPopup('error', "Lỗi nộp báo cáo: " + resSubmit.message);
               }
@@ -626,7 +627,6 @@
       myModal.show();
     }
 
-    /* CHUYỂN ĐỔI SANG DÙNG ServerAPI */
     function loadSheetList() {
       ServerAPI.getListSheets(function(data) {
         const cb = $('#cbSheetSelect').empty();
@@ -655,7 +655,7 @@
         const sel = $('#filterYear').empty().append('<option value="">---Chọn năm---</option>');
         years.sort().reverse().forEach(y => sel.append(`<option value="${y}">${y}</option>`));
         renderSummaryTable();
-      }, function(err) { if (!isSilent) onServerFail(err); });
+      }, function(err) { if(!isSilent) onServerFail(err); });
     }
 
     function renderSummaryTable() {
