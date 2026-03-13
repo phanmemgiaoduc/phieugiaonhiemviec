@@ -94,11 +94,10 @@
       box-shadow: none !important;
   }
 
-  /* --- 4. MÀU SẮC TIẾN ĐỘ (CẬP NHẬT MỚI) --- */
-  /* Áp dụng cho cả dòng và ô con để đè lên màu mặc định */
-  tr.bg-early, tr.bg-early td { background-color: #d1e7dd !important; } /* Trước hạn: Xanh nhạt */
-  tr.bg-today, tr.bg-today td { background-color: #cfe2ff !important; } /* Đúng hạn: Xanh lam */
-  tr.bg-late,  tr.bg-late  td { background-color: #fff3cd !important; } /* Quá hạn: Cam */
+  /* --- 4. MÀU SẮC TIẾN ĐỘ --- */
+  tr.bg-early, tr.bg-early td { background-color: #d1e7dd !important; }
+  tr.bg-today, tr.bg-today td { background-color: #cfe2ff !important; }
+  tr.bg-late,  tr.bg-late  td { background-color: #fff3cd !important; }
 </style>
 
 <div id="loading-overlay" style="display: none; opacity: 0;">
@@ -196,7 +195,6 @@
 // --- BIẾN TOÀN CỤC ---
 let isReportUnlocked = false;
 
-// --- HÀM LOADING ---
 function showLoading(msg) {
     const loader = document.getElementById('loading-overlay');
     const txt = document.getElementById('loading-msg');
@@ -215,7 +213,7 @@ function hideLoading() {
     }
 }
 
-// --- HÀM LƯU TẠM ---
+/* --- CẬP NHẬT: SỬ DỤNG SERVER API THAY VÌ GOOGLE SCRIPT --- */
 function handleSaveTemp() {
     showLoading("✨ Đang ghi nhớ kết quả...");
     
@@ -241,7 +239,7 @@ function handleSaveTemp() {
         resultString: resultString
     };
 
-    google.script.run.withSuccessHandler(function(res) {
+    ServerAPI.saveTempData(payload, function(res) {
         hideLoading();
         if(typeof unlockSubmitButton === 'function') unlockSubmitButton();
 
@@ -253,11 +251,11 @@ function handleSaveTemp() {
             if (typeof showPopup === 'function') showPopup('error', "Lỗi lưu: " + errMsg);
             else alert("Lỗi lưu: " + errMsg);
         }
-    }).withFailureHandler(function(err) {
+    }, function(err) {
         hideLoading();
         if (typeof showPopup === 'function') showPopup('error', "Lỗi Server: " + err.message);
         else alert("Lỗi Server: " + err.message);
-    }).PGV_saveTempData(payload);
+    });
 }
 
 function unlockSubmitButton() {
@@ -278,7 +276,6 @@ function forceLockSubmitButton() {
     }
 }
 
-// --- HÀM RENDER BẢNG ---
 function renderTaskTable(data) {
     forceLockSubmitButton();
     const tbody = $('#taskTable tbody').empty();
@@ -332,9 +329,103 @@ function renderTaskTable(data) {
 
 function autoResizeInfo(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
 
-// --- HÀM LOGIC TÍNH TOÁN (ĐÃ UPDATE MỚI NHẤT) ---
+/* --- CẬP NHẬT: SỬ DỤNG SERVER API --- */
+function submitReport() {
+    if (typeof isReportUnlocked !== 'undefined' && !isReportUnlocked) {
+       showPopup('warning', "Vui lòng bấm 'Lưu tạm' trước khi nộp!");
+       return;
+    }
+
+    const valDays = parseInt($('#inpDaysOff').val()) || 0,
+      valReason = $('#inpReason').val().trim();
+
+    if (valDays > 0 && valReason === "") {
+      showPopup('warning', `Bạn đã có ${valDays} ngày nghỉ.\nPhải nhập lý do!`, () => setTimeout(() => $('#inpReason').focus(), 500));
+      return;
+    }
+    const valPetition = $('#txtPetition').val().trim(),
+      valReport = $('#txtReport').val().trim();
+
+    if (valPetition === "" || valReport === "") {
+      showPopup('error', "Thiếu: Ý kiến tham mưu hoặc Báo cáo tóm tắt");
+      return;
+    }
+
+    let isTableValid = true;
+    $('#taskTable tbody tr').each(function(index) {
+      if ($(this).find('td').length < 2) return;
+      if (!$(this).find('.result-select').val() || !$(this).find('.date-input').val()) {
+        showPopup('error', `Dòng ${index + 1} chưa xong.\nChọn Kết quả và Ngày hoàn thành!`);
+        isTableValid = false;
+        return false;
+      }
+    });
+    if (!isTableValid) return;
+
+    showPopup('confirm', "Hệ thống sẽ thực hiện quy trình 3 bước: Lưu nhật ký - Cập nhật kết quả - Nộp. Xác nhận?", function() {
+      const monthCurrent = $('#txtTime').text(); 
+      setLoading(true, "🚀 Bước 1: Đang lưu vào nhật ký cá nhân...");
+
+      let tableData = [];
+      $('#taskTable tbody tr').each(function() {
+        if ($(this).find('td').length > 1) {
+          tableData.push(["", "", "", "", $(this).find('.result-select').val(), $(this).find('.date-input').val()]);
+        }
+      });
+
+      const payloadSave = {
+        sheetName: currentUser.user.sheetName,
+        daysOff: $('#inpDaysOff').val(),
+        bonusPoint: $('#inpBonus').val(),
+        reason: valReason,
+        petition: valPetition,
+        report: valReport,
+        tableData: tableData
+      };
+
+      ServerAPI.saveTempData(payloadSave, function(resSave) {
+        setLoading(true, "🚀 Bước 2: Đang cập nhật kết quả mới nhất của " + monthCurrent);
+
+        ServerAPI.getUserData(currentUser.user.sheetName, window.PGV_GLOBAL_EMAIL, function(resLoad) {
+          onDataLoaded(resLoad); 
+
+          const finalDataToSubmit = {
+            sheetName: resLoad.user.sheetName,
+            name: resLoad.header.name,
+            daysOff: resLoad.header.daysOff,
+            schoolYear: resLoad.header.schoolYear,
+            time: resLoad.header.time,
+            result: resLoad.header.result,
+            bonusPoint: $('#inpBonus').val(),
+            petition: resLoad.header.savedPetition,
+            report: resLoad.header.savedReport,
+            reason: resLoad.header.savedReason
+          };
+
+          setLoading(true, "🚀 Bước 3: Thực hiện nộp báo cáo " + finalDataToSubmit.time);
+
+          ServerAPI.submitReport(finalDataToSubmit, function(resSubmit) {
+            setLoading(false);
+            if (resSubmit && resSubmit.status === 'success') {
+              $('#txtStatus').text("Đã nộp báo cáo");
+              let msgFinal = (resSubmit.isUpdate === true) ? 
+                  "Đã nộp lại kết quả mới nhất của " + finalDataToSubmit.time : 
+                  "Đã nộp xong kết quả " + finalDataToSubmit.time;
+              showPopup('success', msgFinal);
+              
+              if(typeof forceLockSubmitButton === 'function') forceLockSubmitButton();
+            } else {
+              showPopup('error', "Lỗi nộp báo cáo: " + (resSubmit ? resSubmit.message : "Unkown error"));
+            }
+          }, function(err) { onServerFail(err); });
+
+        }, function(err) { onServerFail(err); });
+      }, function(err) { onServerFail(err); });
+    });
+}
+
+// --- LOGIC TÍNH ĐIỂM ---
 function tinhToanTuDong() {
-    // 1. Xử lý điểm cộng/trừ
     const inpBonus = document.getElementById('inpBonus');
     let diemDieuChinh = inpBonus ? (parseFloat(inpBonus.value) || 0) : 0;
     
@@ -352,7 +443,6 @@ function tinhToanTuDong() {
     const rows = document.querySelectorAll('#taskTable tbody tr.task-row');
     tongViec = rows.length;
 
-    // Lấy ngày hiện tại
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -367,22 +457,19 @@ function tinhToanTuDong() {
         const inputFinish = row.querySelector('.date-input');
         const ngayHT = inputFinish ? inputFinish.value : "";
 
-        // --- A. LOGIC MÀU SẮC (Split Logic) ---
-        row.classList.remove('bg-early', 'bg-today', 'bg-late'); // Xóa màu cũ
+        row.classList.remove('bg-early', 'bg-today', 'bg-late'); 
         
-        // Xác định mốc so sánh (Target)
         let dTarget = null;
         if (index < 2) {
-            dTarget = today; // 2 dòng đầu: So với Hôm nay
+            dTarget = today;
         } else {
             let parsedDeadline = parseDateVN(dlGiao);
             if(parsedDeadline) {
                 parsedDeadline.setHours(0,0,0,0);
-                dTarget = parsedDeadline; // Các dòng sau: So với Cột 3 (Deadline)
+                dTarget = parsedDeadline; 
             }
         }
 
-        // Thực hiện so sánh
         let dFinish = parseDateVN(ngayHT);
         if (dFinish && dTarget) {
             dFinish.setHours(0, 0, 0, 0); 
@@ -395,7 +482,6 @@ function tinhToanTuDong() {
             }
         }
 
-        // --- B. TÍNH ĐIỂM ---
         if (ketQua !== "") {
             daDanhGia++; 
             let isDatCL = (ketQua === "Chất lượng đạt yêu cầu");
@@ -421,7 +507,6 @@ function tinhToanTuDong() {
         }
     });
 
-    // 2. Xếp loại
     let xepLoai = "Chưa hoàn thành";
     let diemCoSo = 0;
 
@@ -445,7 +530,6 @@ function tinhToanTuDong() {
         }
     }
 
-    // 3. Tổng điểm
     let tongDiem = 0;
     if (xepLoai !== "Chưa giao việc" && xepLoai !== "Chưa đánh giá") {
         tongDiem = Math.min(diemCoSo + diemThuong_Total, 100);
@@ -463,7 +547,6 @@ function tinhToanTuDong() {
     }
 }
 
-// --- HÀM XỬ LÝ NGÀY ---
 function calDateDiff(deadlineStr, finishStr) {
     if (!finishStr) return null; 
     let dFinish = parseDateVN(finishStr);
